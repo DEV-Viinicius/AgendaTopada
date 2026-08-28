@@ -11,9 +11,9 @@ build/
 dist/
 *.spec
 
-# Saidas geradas
-AGENDA_FILTRADA.xlsx
-Relatorio de Ordem de Servico*.xls*
+# Saidas geradas (relatorio exportado e agenda) - podem ter dados de cliente
+*.xls
+*.xlsx
 
 # Imagem de referencia capturada na maquina
 item_alterar_tecnico.png
