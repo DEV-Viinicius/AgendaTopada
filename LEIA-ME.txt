@@ -1,0 +1,64 @@
+====================================================================
+ AGENDA TOPADA — Solivetti
+====================================================================
+
+Junta o direcionamento de O.S. no ILUX com a geracao da agenda,
+ordenando cada tecnico na MESMA ordem dos PDFs digitalizados.
+
+--------------------------------------------------------------------
+COMO RODAR  (1 programa, 1 clique)
+--------------------------------------------------------------------
+  python agenda_topada.py
+        Abre a janela. Clique em "GERAR AGENDA COMPLETA" e ele faz
+        as 3 fases sozinho: direciona -> exporta -> gera a agenda.
+
+CONFIG UNICA (so na 1a vez): clique em "Calibrar direcionamento" e
+"Calibrar relatorio" para marcar as coordenadas das telas do ILUX.
+Depois disso, e sempre 1 clique.
+
+Arquivos (voce so abre o 1o):
+  agenda_topada.py        -> o programa (rode este)
+  exportar_relatorio.py   -> Fase 2, chamada automaticamente
+  gerar_agenda_topada.py  -> Fase 3, chamada automaticamente
+  direcionar_os.py        -> Fase 1 (fica AQUI, na pasta do projeto)
+
+--------------------------------------------------------------------
+FLUXO
+--------------------------------------------------------------------
+>> COLOQUE OS PDFS na subpasta "PDFS" DENTRO do projeto
+   (...\AgendaTopada\PDFS). 1 PDF por tecnico, nome do arquivo =
+   nome do tecnico (ex.: WILSON.pdf, CILAS.pdf, FILIPE S.pdf).
+
+1) DIRECIONAR O.S. NO ILUX
+   Le os PDFs da pasta PDFS e direciona cada O.S. ao tecnico no ILUX.
+
+2) EXPORTAR RELATORIO DO ILUX  (automatico, precisa calibrar 1x)
+   Esc -> Relatorios -> Ordem de Servico -> campo STATUS ->
+   escolher a ULTIMA opcao -> Verificado -> icone do Excel ->
+   salvar. O arquivo sai como  relatorio_os_AAAAMMDD_HHMM.xlsx
+   na "pasta de saida".
+   >> Antes do 1o uso, clique em "calibrar telas do relatorio"
+      e marque cada ponto que ele pedir.
+
+3) GERAR AGENDA FILTRADA
+   Escolhe o Excel exportado na Fase 2 e gera AGENDA_FILTRADA.xlsx:
+   - cada tecnico na ordem dos PDFs;
+   - O.S. que estao no Excel mas NAO estao no PDF: vao para o FIM,
+     SEM numero de posicao.
+
+--------------------------------------------------------------------
+IMPORTANTE
+--------------------------------------------------------------------
+- Os PDFs ficam em ...\AgendaTopada\PDFS (dentro do projeto).
+- O nome do PDF (ex.: "WILSON.pdf") deve bater com a coluna
+  "Tecnico" do Excel (o casamento ignora maiusculas/acentos/espacos).
+- O Excel exportado precisa ter as colunas:
+  Tecnico | Cliente (Razao) | Cidade | Bairro | Seq. O.S. | Tipo de Status
+- Seguranca das fases 1 e 2: jogue o mouse para o CANTO SUPERIOR
+  ESQUERDO da tela para ABORTAR a qualquer momento.
+- As pastas (PDFs e saida) podem ser trocadas no rodape do menu.
+
+--------------------------------------------------------------------
+GERAR O .EXE (opcional)
+--------------------------------------------------------------------
+  pyinstaller --onedir --noconsole --add-data "LOGO SOLIVETTI.jpg;." agenda_topada.py

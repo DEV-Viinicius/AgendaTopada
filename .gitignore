@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs gerados em execucao
+log_direcionamento_*.csv
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Saidas geradas
+AGENDA_FILTRADA.xlsx
+Relatorio de Ordem de Servico*.xls*
+
+# Imagem de referencia capturada na maquina
+item_alterar_tecnico.png
+
+# Scripts temporarios de teste
+_teste_*.py
+
+# PDFs com dados de cliente (nao subir para o GitHub)
+*.pdf
+PDFS/

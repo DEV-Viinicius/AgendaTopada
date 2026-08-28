@@ -1,0 +1,34 @@
+{
+  "menu_relatorios": [
+    525,
+    165
+  ],
+  "item_ordem_servico": [
+    585,
+    215
+  ],
+  "campo_status": [
+    982,
+    487
+  ],
+  "campo_lista_status": [
+    883,
+    499
+  ],
+  "opcao_ultima_status": [
+    942,
+    696
+  ],
+  "btn_verificado": [
+    798,
+    582
+  ],
+  "icone_excel": [
+    745,
+    825
+  ],
+  "btn_salvar": [
+    1377,
+    872
+  ]
+}
