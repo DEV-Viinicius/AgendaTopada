@@ -201,20 +201,34 @@ def numero_por_geometria(page):
     return _numero_por_rotulo(itens)
 
 
+# Nos 3 modelos o rotulo do numero fica no TOPO da folha (ate ~29% da altura no
+# modelo instalacao; normal e leitura ficam ~7-10%). Entao o OCR le so a FAIXA
+# SUPERIOR da pagina (com folga), em vez da pagina inteira: muito mais rapido,
+# sem perder o numero. Se um dia algum modelo trouxer o numero mais abaixo,
+# basta aumentar esta fracao.
+FRACAO_TOPO_OCR = 0.48
+# resolucao do OCR (DPI). Menos DPI = OCR mais rapido; os numeros da O.S. sao
+# grandes o bastante para serem lidos com folga em ~150 DPI.
+DPI_OCR = 150
+
+
 def numero_por_ocr(page):
     """
-    Reserva para paginas SEM camada de texto (scan puro): rasteriza a pagina
-    inteira, roda o OCR e aplica a MESMA regra dos 3 modelos (rotulo -> numero
-    a direita). Se nao achar por rotulo, tenta um numero no canto sup. direito.
+    Reserva para paginas SEM camada de texto (scan puro): rasteriza a FAIXA
+    SUPERIOR da pagina, roda o OCR e aplica a MESMA regra dos 3 modelos
+    (rotulo -> numero a direita). Se nao achar por rotulo, tenta um numero no
+    canto sup. direito.
     """
     try:
         import numpy as np
-        zoom = 220 / 72.0
+        zoom = DPI_OCR / 72.0
         pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
         img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
         if pix.n == 4:
             img = img[:, :, :3]
-        img = np.ascontiguousarray(img)
+        # corta so o topo da pagina (onde ficam os rotulos dos 3 modelos)
+        topo = max(1, int(img.shape[0] * FRACAO_TOPO_OCR))
+        img = np.ascontiguousarray(img[0:topo, :])
         achados = get_reader().readtext(img, detail=1, paragraph=False)
         # converte as caixas do OCR em itens (texto, x0, y0, x1, y1)
         itens = []
@@ -239,13 +253,53 @@ def numero_por_ocr(page):
         return None
 
 
+# Cache da leitura: como os scans passam por OCR (lento), guardamos o resultado
+# por arquivo, marcado por data-de-modificacao + tamanho. Se o PDF nao mudou,
+# devolve na hora — isso evita reprocessar na Fase 3 o que a Fase 1 ja leu, e
+# torna reexecucoes instantaneas. O cache NAO vai para o Git.
+CACHE_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache_leitura_os.json")
+
+
+def _assinatura_arquivo(caminho):
+    try:
+        st = os.stat(caminho)
+        return f"{int(st.st_mtime)}-{st.st_size}"
+    except OSError:
+        return None
+
+
+def _cache_carregar():
+    try:
+        with open(CACHE_JSON, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _cache_salvar(cache):
+    try:
+        with open(CACHE_JSON, "w", encoding="utf-8") as f:
+            json.dump(cache, f)
+    except Exception:
+        pass
+
+
 def extrair_os_do_pdf(caminho):
     """
     Retorna a lista de numeros de O.S. do PDF, na ordem das paginas, SEM repetir
     (o mesmo numero costuma vir em 2 paginas seguidas). Le o numero pela POSICAO
     do rotulo, cobrindo os 3 modelos (padrao, instalacao e leitura); se nenhum
-    rotulo aparecer na pagina, ela e pulada.
+    rotulo aparecer na pagina, ela e pulada. Usa cache por arquivo (evita OCR
+    repetido quando o PDF nao mudou).
     """
+    # 0) cache: se o arquivo nao mudou, devolve o resultado ja lido
+    assinatura = _assinatura_arquivo(caminho)
+    chave = os.path.abspath(caminho)
+    cache = _cache_carregar()
+    ent = cache.get(chave)
+    if assinatura and ent and ent.get("sig") == assinatura:
+        return list(ent.get("nums", []))
+
     numeros = []
     vistos = set()
     try:
@@ -270,6 +324,11 @@ def extrair_os_do_pdf(caminho):
             numeros.append(num)
     finally:
         doc.close()
+
+    # guarda no cache para nao reprocessar este arquivo enquanto nao mudar
+    if assinatura:
+        cache[chave] = {"sig": assinatura, "nums": numeros}
+        _cache_salvar(cache)
     return numeros
 
 

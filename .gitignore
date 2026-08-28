@@ -4,6 +4,9 @@ config_direcionar.json
 config_relatorio.json
 config_topada.json
 
+# Cache da leitura de O.S. (resultado de OCR por arquivo)
+cache_leitura_os.json
+
 # Python
 __pycache__/
 *.pyc
