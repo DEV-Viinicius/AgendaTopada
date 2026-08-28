@@ -1,3 +1,9 @@
+# Configuracoes locais da maquina (coordenadas de calibracao / pastas).
+# NAO versionar: cada maquina calibra na primeira vez que roda.
+config_direcionar.json
+config_relatorio.json
+config_topada.json
+
 # Python
 __pycache__/
 *.pyc
