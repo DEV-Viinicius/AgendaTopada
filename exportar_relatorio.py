@@ -9,7 +9,7 @@ Sequencia automatizada (apos o direcionamento das O.S.):
     -> clica no campo da lista e escolhe a ULTIMA opcao
     -> clica em 'Verificado'
     -> clica no simbolo do Excel  ->  abre a tela 'Salvar como'
-    -> salva o arquivo (nome com data/hora) na pasta configurada
+    -> VOCE salva o arquivo na pasta do Agenda Topada (aparece um aviso na tela)
 
 Como usar
 ---------
@@ -56,7 +56,6 @@ CAMPOS_COORD = [
     ("opcao_ultima_status", "A ULTIMA opcao da lista de status"),
     ("btn_verificado",      "Botao/opcao 'Verificado'"),
     ("icone_excel",         "Simbolo do Excel (exportar)"),
-    ("btn_salvar",          "Na tela 'Salvar como': o botao SALVAR"),
 ]
 
 
@@ -132,28 +131,23 @@ def calibrar(cfg):
 
 
 # ---------------------------------------------------------------------------
-# Salvar (tela 'Salvar como' do Windows)
+# Salvar (tela 'Salvar como' do Windows) — QUEM SALVA E O USUARIO
 # ---------------------------------------------------------------------------
-def _colar(texto):
-    pyperclip.copy(texto)
-    pyautogui.hotkey("ctrl", "v")
-
-
-def salvar_como(caminho_completo, cfg, dm=1.0):
-    """
-    Na tela 'Salvar como' do Windows: espera a janela abrir, poe o caminho
-    completo no campo 'Nome do arquivo' e CLICA no botao 'Salvar' calibrado.
-    """
-    esperar(20.0, dm)  # aguarda a tela de salvar APARECER
-    pyautogui.hotkey("ctrl", "a")  # seleciona o que estiver no campo do nome
-    esperar(0.3, dm)
-    _colar(caminho_completo)       # cola o caminho/nome do arquivo
-    esperar(0.5, dm)
-    pyautogui.click(*cfg["btn_salvar"])  # clica no botao SALVAR
-    esperar(1.2, dm)
-    # se aparecer "substituir arquivo?", confirma no mesmo lugar / Enter
-    pyautogui.press("enter")
-    esperar(1.0, dm)
+# O script apenas ABRE a tela 'Salvar como' (clicando no icone do Excel). A
+# escolha da pasta e o clique em 'Salvar' ficam com o USUARIO. Antes disso
+# mostramos um aviso com a pasta certa (a do Agenda Topada) e o nome sugerido.
+# Assim some o clique automatico no botao (fragil) e a espera fixa de 20s.
+def _aviso_salvar_console(pasta, nome):
+    """Aviso padrao (execucao pelo console): instrui e espera Enter."""
+    log("")
+    log("=" * 64)
+    log(">>> AGORA SALVE O RELATORIO <<<")
+    log("Na tela 'Salvar como' que abriu no ILUX, salve NESTA pasta:")
+    log(f"    {pasta}")
+    log(f"Nome sugerido: {nome}")
+    log("Depois de clicar em 'Salvar', volte aqui.")
+    log("=" * 64)
+    input("Ja salvou? Pressione ENTER para continuar... ")
 
 
 # ---------------------------------------------------------------------------
@@ -170,14 +164,28 @@ def pasta_saida():
     return p
 
 
-def encontrar_relatorio(pasta, base):
-    """Acha o arquivo salvo (.xls ou .xlsx), pegando o mais recente."""
-    cands = []
+def encontrar_relatorio(pasta, base, desde=0):
+    """
+    Acha o relatorio salvo (.xls/.xlsx). Como quem salva e o usuario, o nome
+    pode variar: primeiro tenta o nome sugerido; senao, pega o Excel mais
+    recente salvo NESTA execucao (modificado a partir de 'desde'), ignorando a
+    AGENDA_FILTRADA. Retorna o caminho ou None.
+    """
+    exatos, recentes = [], []
     for f in os.listdir(pasta):
         nome_sem_ext, ext = os.path.splitext(f)
-        if nome_sem_ext == base and ext.lower() in (".xls", ".xlsx"):
-            cands.append(os.path.join(pasta, f))
-    return max(cands, key=os.path.getmtime) if cands else None
+        if ext.lower() not in (".xls", ".xlsx"):
+            continue
+        if nome_sem_ext.upper().startswith("AGENDA_FILTRADA"):
+            continue  # e a saida da fase 3, nao o relatorio
+        caminho = os.path.join(pasta, f)
+        if nome_sem_ext == base:
+            exatos.append(caminho)
+        elif os.path.getmtime(caminho) >= desde:
+            recentes.append(caminho)
+    if exatos:
+        return max(exatos, key=os.path.getmtime)
+    return max(recentes, key=os.path.getmtime) if recentes else None
 
 
 def registrar_relatorio(caminho):
@@ -186,7 +194,7 @@ def registrar_relatorio(caminho):
     salvar_config(cfg, CONFIG_TOPADA)
 
 
-def exportar(dm=1.0, confirmar=True):
+def exportar(dm=1.0, confirmar=True, avisar_salvar=None):
     _ensure_gui()
     cfg = carregar_config(CONFIG_REL)
     if not config_completa(cfg):
@@ -211,6 +219,7 @@ def exportar(dm=1.0, confirmar=True):
     log("Comecando em 5 segundos... clique na janela do ILUX.")
     time.sleep(5)
 
+    inicio = time.time()  # marca o inicio p/ achar o arquivo salvo NESTA execucao
     try:
         # 0) fecha a tela do direcionamento
         pyautogui.press("esc")
@@ -236,10 +245,12 @@ def exportar(dm=1.0, confirmar=True):
         pyautogui.click(*cfg["btn_verificado"])
         esperar(2.0, dm)  # aguarda o relatorio filtrar/gerar
 
-        # 5) icone do Excel -> abre 'Salvar como' -> clica em Salvar
-        #    (digita o nome SEM extensao; o ILUX salva no formato dele)
+        # 5) icone do Excel -> abre a tela 'Salvar como'
+        #    QUEM SALVA E O USUARIO: abrimos a tela, mostramos o aviso com a
+        #    pasta certa e esperamos ele salvar (some o clique automatico).
         pyautogui.click(*cfg["icone_excel"])
-        salvar_como(destino_base, cfg, dm)
+        esperar(2.0, dm)  # tempo p/ a tela 'Salvar como' aparecer
+        (avisar_salvar or _aviso_salvar_console)(pasta, NOME_BASE)
 
     except pyautogui.FailSafeException:
         log("ABORTADO pelo usuario (mouse no canto).")
@@ -250,7 +261,7 @@ def exportar(dm=1.0, confirmar=True):
 
     # confirma que o arquivo apareceu (aceita .xls ou .xlsx)
     esperar(1.0, dm)
-    achado = encontrar_relatorio(pasta, NOME_BASE)
+    achado = encontrar_relatorio(pasta, NOME_BASE, inicio)
     if achado:
         registrar_relatorio(achado)
         log(f"\nOK! Relatorio salvo: {achado}")

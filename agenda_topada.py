@@ -171,6 +171,28 @@ def _fase1_direcionar(pasta, cfg_dir, dm):
     return True
 
 
+def _avisar_salvar_gui(pasta, nome):
+    """
+    Mostra na tela (pop-up) o aviso de onde salvar o relatorio e ESPERA o
+    usuario clicar OK antes de continuar. Como o pipeline roda numa thread, a
+    janela e criada na thread principal (janela.after) e sincronizamos com um
+    Event.
+    """
+    evento = threading.Event()
+
+    def mostrar():
+        messagebox.showinfo(
+            "Salve o relatório",
+            "A tela 'Salvar como' abriu no ILUX.\n\n"
+            f"Salve o arquivo NESTA pasta:\n{pasta}\n\n"
+            f"Nome sugerido:\n{nome}\n\n"
+            "Depois de clicar em 'Salvar', clique OK aqui para continuar.")
+        evento.set()
+
+    janela.after(0, mostrar)
+    evento.wait()
+
+
 def _pipeline(dm=1.0):
     antigo_stdout = sys.stdout
     sys.stdout = _EscritorLog()
@@ -186,7 +208,7 @@ def _pipeline(dm=1.0):
         # FASE 2
         log("=" * 60)
         log("FASE 2 — exportando relatorio do ILUX")
-        caminho = fase2mod.exportar(dm, confirmar=False)
+        caminho = fase2mod.exportar(dm, confirmar=False, avisar_salvar=_avisar_salvar_gui)
         if not caminho:
             log("Falha ao exportar o relatorio. Parei aqui.")
             return
